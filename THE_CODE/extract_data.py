@@ -7,7 +7,7 @@ def load_data(directory, inp_size):
     files = os.listdir(directory)
     files.sort()
 
-    train_data = np.zeros((len(files), inp_size[0], inp_size[2]))
+    train_data = np.zeros((len(files), inp_size[0], inp_size[1]))
 
     for file in files:
         if ".npy" in file:

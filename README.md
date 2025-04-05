@@ -38,12 +38,8 @@ The dataset consists of channel frequency responses derived from PSS/SSS signals
 ## Usage
 Clone this repository and run the preprocessing and training scripts:
 ```bash
- git clone https://github.com/yourusername/5G-Base-Station-Classification.git
+ git clone https://github.com/vaclav-kubes/MLF_project.git
 ```
-
-## Contributors
-- Václav Kubeš
-- Hana Daová
 
 ## License
 This project is for educational purposes and follows the guidelines of the university course.

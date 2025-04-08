@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from keras.models import Sequential
-
 from keras.optimizers import Adam
 from keras.utils import to_categorical
 from keras.callbacks import EarlyStopping
@@ -17,31 +16,38 @@ import extract_data
 
 ######## DATA LOADING #########
 
-X_train = extract_data.load_data("MPA-MLF_data\\Train", (72, 48))
-y_train = extract_data.load_labels("MPA-MLF_data\\label_train.csv")
-print(np.count_nonzero(y_train == 0),np.count_nonzero(y_train == 1), np.count_nonzero(y_train == 2) )
-#X_test = extract_data.load_data("MPA-MLF_data\\Test", (72, 48))
+dataset = extract_data.load_data("MPA-MLF_data\\Train", (72, 48))
+dataset_labels = extract_data.load_labels("MPA-MLF_data\\label_train.csv")
+#print(np.count_nonzero(y_train == 0),np.count_nonzero(y_train == 1), np.count_nonzero(y_train == 2) )
+
+#x_test = extract_data.load_data("MPA-MLF_data\\Test", (72, 48))
 #y_test = extract_data.load_labels("MPA-MLF_data\\test_format.csv")
-rnd_test_index_list = np.random.choice(range(0,X_train.shape[0]), 500)
+#rnd_test_index_list = np.random.choice(range(0,x_train.shape[0]), 500)
 #print(rnd_test_index_list)
-X_test = X_train[rnd_test_index_list]
-y_test = y_train[rnd_test_index_list]
+#x_test = x_train[rnd_test_index_list]
+#y_test = y_train[rnd_test_index_list]
 #print(y_test)
 
 
 ######## DATA PREPROCESSING #########
 
+print(np.max(dataset), np.min(dataset))
+
+x_train, y_train, x_test, y_test = extract_data.split_data(dataset, dataset_labels, 0.2)
+
 y_train_encoded = to_categorical(y_train, num_classes=3)
-X_train_normalized = X_train.astype('float32') / np.max(X_train)
-
-print(np.max(X_train), np.min(X_train))
-
 y_test_encoded = to_categorical(y_test, num_classes=3)
-X_test_normalized = X_test.astype('float32') / np.max(X_test)
 
-X_train_normalized = X_train_normalized.reshape(-1, 72, 48,1)
-X_test_normalized = X_test_normalized.reshape(-1, 72, 48, 1)
-#print(X_train_normalized)
+x_train_mean = np.mean(x_train) #Z-score normalization of training data
+x_train_deviation = np.std(x_train)
+x_train_normalized = (x_train - x_train_mean) / x_train_deviation
+
+x_test_mean = np.mean(x_test) #Z-score normalization of test data
+x_test_deviation = np.std(x_test)
+x_test_normalized = (x_test - x_test_mean) / x_test_deviation
+
+x_train_normalized = x_train_normalized.reshape(-1, 72, 48,1)
+x_test_normalized = x_test_normalized.reshape(-1, 72, 48, 1)
 
 ######## CNN MODEL #########
 
@@ -64,17 +70,19 @@ early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restor
 
 ######## TRAINING #########
 
-history = model.fit(X_train_normalized, y_train_encoded, epochs=30, batch_size=10, validation_split = 0.2, callbacks=early_stopping)
+history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=10, validation_split = 0.2, callbacks=early_stopping)
 
 
 ######## EVALUATION #########
 
-score = model.evaluate(X_test_normalized, y_test_encoded, verbose=1)
+score = model.evaluate(x_test_normalized, y_test_encoded, verbose=1)
 print('Test loss:', score[0])
 print(f'Test accuracy: {score[1]*100} %')
 
 
-y_pred = model.predict(X_test_normalized)
+extract_data.load_data("MPA-MLF_data\Test", (72, 48))
+
+y_pred = model.predict(x_test_normalized)
 print(y_pred)
 y_pred_classes = np.argmax(y_pred, axis=1)
 y_true_classes = np.argmax(y_test_encoded, axis=1)

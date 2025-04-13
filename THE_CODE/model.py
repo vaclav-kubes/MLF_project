@@ -19,7 +19,6 @@ import extract_data
 dataset = extract_data.load_data("MPA-MLF_data\\Train", (72, 48))
 dataset_labels = extract_data.load_labels("MPA-MLF_data\\label_train.csv")
 #print(np.count_nonzero(y_train == 0),np.count_nonzero(y_train == 1), np.count_nonzero(y_train == 2) )
-
 #x_test = extract_data.load_data("MPA-MLF_data\\Test", (72, 48))
 #y_test = extract_data.load_labels("MPA-MLF_data\\test_format.csv")
 #rnd_test_index_list = np.random.choice(range(0,x_train.shape[0]), 500)
@@ -27,13 +26,31 @@ dataset_labels = extract_data.load_labels("MPA-MLF_data\\label_train.csv")
 #x_test = x_train[rnd_test_index_list]
 #y_test = y_train[rnd_test_index_list]
 #print(y_test)
+####### DATA AUGMENTATION ########
+bts_1 = dataset[dataset_labels == 1]
+print("Num of bts 1: ", bts_1.shape[0])
+for k in range(10):
+    bts_1 = bts_1 + np.random.normal(0, 5, (bts_1.shape[0], bts_1.shape[1], bts_1.shape[2]))
+    dataset = np.append(dataset, bts_1, 0)
+    dataset_labels = np.append(dataset_labels, np.ones(bts_1.shape[0]))
 
+bts_2 = dataset[dataset_labels == 2]
+print("Num of bts 2: ", bts_2.shape[0])
+for k in range(10):
+    bts_2 = bts_2 + np.random.normal(0, 5, (bts_2.shape[0], bts_2.shape[1], bts_2.shape[2]))
+    dataset = np.append(dataset, bts_2, 0)
+    dataset_labels = np.append(dataset_labels, np.ones(bts_2.shape[0]))
+
+print("Final size of dataset: ", dataset.shape)
 
 ######## DATA PREPROCESSING #########
 
 print(np.max(dataset), np.min(dataset))
 
-x_train, y_train, x_test, y_test = extract_data.split_data(dataset, dataset_labels, 0.2)
+x_train, y_train, x_test, y_test = extract_data.split_data(dataset, dataset_labels, 0.3)
+
+print("Num of bts0, bts1, bts2 in training data: ", np.count_nonzero(y_train == 0), np.count_nonzero(y_train == 1), np.count_nonzero(y_train == 2), "num of train: ", len(y_train))
+print("Num of bts0, bts1, bts2 in test data: ", np.count_nonzero(y_test == 0), np.count_nonzero(y_test == 1), np.count_nonzero(y_test == 2), "num of test: ", len(y_test))
 
 y_train_encoded = to_categorical(y_train, num_classes=3)
 y_test_encoded = to_categorical(y_test, num_classes=3)
@@ -52,8 +69,9 @@ x_test_normalized = x_test_normalized.reshape(-1, 72, 48, 1)
 ######## CNN MODEL #########
 
 model = Sequential()
+#model.add(Input(x_train_normalized.shape))
 model.add(Input(shape=(72, 48, 1)))
-model.add(Conv2D(32, kernel_size=(3,3), activation = 'relu', input_shape=(72,48,1)))
+model.add(Conv2D(64, kernel_size=(4,4), activation = 'relu'))
 model.add(MaxPooling2D(pool_size=(2,2)))
 model.add(Flatten(input_shape=(32, 32, 2)))
 model.add(Dense(64, activation='relu'))
@@ -66,11 +84,13 @@ model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['ac
 model.summary()
 
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True  )
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1, restore_best_weights=True  )
 
 ######## TRAINING #########
+#if LOAD_SAVED_MODEL:
 
-history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=10, validation_split = 0.2, callbacks=early_stopping)
+#else:
+history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=10, validation_split = 0.2, shuffle = True, callbacks=early_stopping)
 
 
 ######## EVALUATION #########
@@ -80,17 +100,7 @@ print('Test loss:', score[0])
 print(f'Test accuracy: {score[1]*100} %')
 
 
-extract_data.load_data("MPA-MLF_data\Test", (72, 48))
-
-y_pred = model.predict(x_test_normalized)
-print(y_pred)
-y_pred_classes = np.argmax(y_pred, axis=1)
-y_true_classes = np.argmax(y_test_encoded, axis=1)
-print(y_pred_classes)
-print(y_true_classes)
-cm = confusion_matrix(y_true_classes, y_pred_classes)
-print(cm)
-ConfusionMatrixDisplay.from_predictions(y_true_classes,y_pred_classes)
+#extract_data.load_data("MPA-MLF_data\Test", (72, 48))
 
 plt.figure()
 plt.title('Loss')
@@ -104,4 +114,14 @@ plt.plot(history.history['accuracy'])
 plt.plot(history.history['val_accuracy'])
 plt.legend(['training', 'validation'])
 plt.grid('both')
+
+y_pred = model.predict(x_test_normalized)
+#print(y_pred)
+y_pred_classes = np.argmax(y_pred, axis=1)
+y_true_classes = np.argmax(y_test_encoded, axis=1)
+#print(y_pred_classes)
+#print(y_true_classes)
+cm = confusion_matrix(y_true_classes, y_pred_classes)
+print(cm)
+ConfusionMatrixDisplay.from_predictions(y_true_classes,y_pred_classes)
 plt.show()

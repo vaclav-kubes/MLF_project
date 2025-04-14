@@ -8,11 +8,13 @@ from keras.models import Sequential
 from keras.optimizers import Adam
 from keras.utils import to_categorical
 from keras.callbacks import EarlyStopping
-from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Input
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Input, BatchNormalization
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import confusion_matrix
 import extract_data
 
+######## VARIABLES ############
+SAVE_MODEL = True
 
 ######## DATA LOADING #########
 
@@ -26,20 +28,22 @@ dataset_labels = extract_data.load_labels("MPA-MLF_data\\label_train.csv")
 #x_test = x_train[rnd_test_index_list]
 #y_test = y_train[rnd_test_index_list]
 #print(y_test)
+print(np.std(dataset))
 ####### DATA AUGMENTATION ########
 bts_1 = dataset[dataset_labels == 1]
 print("Num of bts 1: ", bts_1.shape[0])
-for k in range(10):
-    bts_1 = bts_1 + np.random.normal(0, 5, (bts_1.shape[0], bts_1.shape[1], bts_1.shape[2]))
+num_of_bts0 = np.count_nonzero(dataset_labels == 0)
+for k in range(num_of_bts0//bts_1.shape[0]):
+    bts_1 = bts_1 + np.random.normal(0, 3, (bts_1.shape[0], bts_1.shape[1], bts_1.shape[2])) #adding AWGN
     dataset = np.append(dataset, bts_1, 0)
     dataset_labels = np.append(dataset_labels, np.ones(bts_1.shape[0]))
 
 bts_2 = dataset[dataset_labels == 2]
 print("Num of bts 2: ", bts_2.shape[0])
-for k in range(10):
-    bts_2 = bts_2 + np.random.normal(0, 5, (bts_2.shape[0], bts_2.shape[1], bts_2.shape[2]))
+for k in range(num_of_bts0//bts_2.shape[0]):
+    bts_2 = bts_2 + np.random.normal(0, 3, (bts_2.shape[0], bts_2.shape[1], bts_2.shape[2])) #adding AWGN
     dataset = np.append(dataset, bts_2, 0)
-    dataset_labels = np.append(dataset_labels, np.ones(bts_2.shape[0]))
+    dataset_labels = np.append(dataset_labels, 2 * np.ones(bts_2.shape[0]))
 
 print("Final size of dataset: ", dataset.shape)
 
@@ -63,9 +67,10 @@ x_test_mean = np.mean(x_test) #Z-score normalization of test data
 x_test_deviation = np.std(x_test)
 x_test_normalized = (x_test - x_test_mean) / x_test_deviation
 
+#print(x_train_normalized.shape)
 x_train_normalized = x_train_normalized.reshape(-1, 72, 48,1)
 x_test_normalized = x_test_normalized.reshape(-1, 72, 48, 1)
-
+#print(x_train_normalized.shape)
 ######## CNN MODEL #########
 
 model = Sequential()
@@ -74,7 +79,9 @@ model.add(Input(shape=(72, 48, 1)))
 model.add(Conv2D(64, kernel_size=(4,4), activation = 'relu'))
 model.add(MaxPooling2D(pool_size=(2,2)))
 model.add(Flatten(input_shape=(32, 32, 2)))
+model.add(BatchNormalization())
 model.add(Dense(64, activation='relu'))
+model.add(BatchNormalization())
 model.add(Dense(3, activation='softmax'))
 
 
@@ -84,13 +91,15 @@ model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['ac
 model.summary()
 
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1, restore_best_weights=True  )
+early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True  )
 
 ######## TRAINING #########
 #if LOAD_SAVED_MODEL:
 
 #else:
-history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=10, validation_split = 0.2, shuffle = True, callbacks=early_stopping)
+history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=20, validation_split = 0.2, shuffle = True, callbacks = early_stopping)#,
+
+if SAVE_MODEL: model.save("THE_CODE\\model.keras")
 
 
 ######## EVALUATION #########

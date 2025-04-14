@@ -24,8 +24,8 @@ def load_labels(path):
 def split_data(dataset: np.array, dataset_labels: np.array,  train_eval_ratio: float) -> tuple: 
     num_of_eval =np.int64(np.ceil(train_eval_ratio*dataset.shape[0]))
     print(num_of_eval)
-    #rnd_test_index_list = np.random.choice(range(0,dataset.shape[0] - 1), num_of_eval)
-    rnd_test_index_list = np.random.randint(0, dataset.shape[0], num_of_eval)
+    rnd_test_index_list = np.random.choice(range(dataset.shape[0]), num_of_eval, replace = False)
+    #rnd_test_index_list = np.random.randint(0, dataset.shape[0], num_of_eval)
     eval_labels = dataset_labels[rnd_test_index_list]
     eval = dataset[rnd_test_index_list]
     train = [dataset[k] for k in range(0,dataset.shape[0] - 1) if k not in rnd_test_index_list]

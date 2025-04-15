@@ -8,7 +8,7 @@ from keras.models import Sequential
 from keras.optimizers import Adam
 from keras.utils import to_categorical
 from keras.callbacks import EarlyStopping
-from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Input, BatchNormalization
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Input, BatchNormalization, AveragePooling2D
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import confusion_matrix
 import extract_data
@@ -51,7 +51,7 @@ print("Final size of dataset: ", dataset.shape)
 
 print(np.max(dataset), np.min(dataset))
 
-x_train, y_train, x_test, y_test = extract_data.split_data(dataset, dataset_labels, 0.3)
+x_train, y_train, x_test, y_test = extract_data.split_data(dataset, dataset_labels, 0.2)
 
 print("Num of bts0, bts1, bts2 in training data: ", np.count_nonzero(y_train == 0), np.count_nonzero(y_train == 1), np.count_nonzero(y_train == 2), "num of train: ", len(y_train))
 print("Num of bts0, bts1, bts2 in test data: ", np.count_nonzero(y_test == 0), np.count_nonzero(y_test == 1), np.count_nonzero(y_test == 2), "num of test: ", len(y_test))
@@ -76,12 +76,12 @@ x_test_normalized = x_test_normalized.reshape(-1, 72, 48, 1)
 model = Sequential()
 #model.add(Input(x_train_normalized.shape))
 model.add(Input(shape=(72, 48, 1)))
-model.add(Conv2D(64, kernel_size=(4,4), activation = 'relu'))
+model.add(Conv2D(32, kernel_size=(5,5), activation = 'relu'))
 model.add(MaxPooling2D(pool_size=(2,2)))
-model.add(Flatten(input_shape=(32, 32, 2)))
-model.add(BatchNormalization())
+model.add(Flatten())#input_shape=(32, 32, 2)
+#model.add(BatchNormalization())
 model.add(Dense(64, activation='relu'))
-model.add(BatchNormalization())
+#model.add(BatchNormalization())
 model.add(Dense(3, activation='softmax'))
 
 
@@ -97,7 +97,7 @@ early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restor
 #if LOAD_SAVED_MODEL:
 
 #else:
-history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=20, validation_split = 0.2, shuffle = True, callbacks = early_stopping)#,
+history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=20, validation_split = 0.5, callbacks = early_stopping)#, shuffle = True 
 
 if SAVE_MODEL: model.save("THE_CODE\\model.keras")
 

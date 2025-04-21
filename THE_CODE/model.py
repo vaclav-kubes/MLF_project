@@ -28,20 +28,29 @@ dataset_labels = extract_data.load_labels("MPA-MLF_data\\label_train.csv")
 #x_test = x_train[rnd_test_index_list]
 #y_test = y_train[rnd_test_index_list]
 #print(y_test)
-print(np.std(dataset))
+#print(np.std(dataset))
 ####### DATA AUGMENTATION ########
 bts_1 = dataset[dataset_labels == 1]
 print("Num of bts 1: ", bts_1.shape[0])
+
+bts_0 = dataset[dataset_labels == 0]
+for k in range(2):
+    bts_0 = bts_0 + np.random.normal(0, 3+k, (bts_0.shape[0], bts_0.shape[1], bts_0.shape[2])) #adding AWGN
+    dataset = np.append(dataset, bts_0, 0)
+    dataset_labels = np.append(dataset_labels, np.zeros(bts_0.shape[0]))
 num_of_bts0 = np.count_nonzero(dataset_labels == 0)
+print("Num of bts0: ", num_of_bts0)
+print(num_of_bts0//bts_1.shape[0])
+
 for k in range(num_of_bts0//bts_1.shape[0]):
-    bts_1 = bts_1 + np.random.normal(0, 3, (bts_1.shape[0], bts_1.shape[1], bts_1.shape[2])) #adding AWGN
+    bts_1 = bts_1 + np.random.normal(0, 3+k//3, (bts_1.shape[0], bts_1.shape[1], bts_1.shape[2])) #adding AWGN
     dataset = np.append(dataset, bts_1, 0)
     dataset_labels = np.append(dataset_labels, np.ones(bts_1.shape[0]))
 
 bts_2 = dataset[dataset_labels == 2]
-print("Num of bts 2: ", bts_2.shape[0])
+print("Num of bts 2: ", bts_2.shape[0] )
 for k in range(num_of_bts0//bts_2.shape[0]):
-    bts_2 = bts_2 + np.random.normal(0, 3, (bts_2.shape[0], bts_2.shape[1], bts_2.shape[2])) #adding AWGN
+    bts_2 = bts_2 + np.random.normal(0, 3+k//3, (bts_2.shape[0], bts_2.shape[1], bts_2.shape[2])) #adding AWGN
     dataset = np.append(dataset, bts_2, 0)
     dataset_labels = np.append(dataset_labels, 2 * np.ones(bts_2.shape[0]))
 
@@ -80,7 +89,8 @@ model.add(Conv2D(32, kernel_size=(5,5), activation = 'relu'))
 model.add(MaxPooling2D(pool_size=(2,2)))
 model.add(Flatten())#input_shape=(32, 32, 2)
 #model.add(BatchNormalization())
-model.add(Dense(64, activation='relu'))
+model.add(Dense(64, activation='relu')) #128
+model.add(Dense(32, activation='relu'))
 #model.add(BatchNormalization())
 model.add(Dense(3, activation='softmax'))
 
@@ -91,13 +101,13 @@ model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['ac
 model.summary()
 
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True  )
+early_stopping = EarlyStopping(monitor='val_loss', patience=7, verbose=1, restore_best_weights=True  )
 
 ######## TRAINING #########
 #if LOAD_SAVED_MODEL:
 
-#else:
-history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=20, validation_split = 0.5, callbacks = early_stopping)#, shuffle = True 
+#else:                                                                                                 #0.5
+history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=20, validation_data = (x_test_normalized, y_test_encoded), callbacks = early_stopping)#, shuffle = True, validation_split = 0.2
 
 if SAVE_MODEL: model.save("THE_CODE\\model.keras")
 

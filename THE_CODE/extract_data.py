@@ -38,3 +38,27 @@ def split_data(dataset: np.array, dataset_labels: np.array,  train_eval_ratio: f
     
     #train = dataset[train_index_list]
     return train, train_labels , eval, eval_labels
+
+def data_augm(dataset: np.array, dataset_labels: np.array, awgn_std: int) -> tuple:
+    bts_0 = dataset[dataset_labels == 0]
+    bts_1 = dataset[dataset_labels == 1]
+    bts_2 = dataset[dataset_labels == 2]
+    #mean = np.mean(dataset)
+    for k in range(2):
+        bts_0 = bts_0 + np.random.normal(0, awgn_std + 2*k, (bts_0.shape[0], bts_0.shape[1], bts_0.shape[2])) #adding AWGN
+        dataset = np.append(dataset, bts_0, 0)
+        dataset_labels = np.append(dataset_labels, np.zeros(bts_0.shape[0]))
+
+    num_of_bts0 = np.count_nonzero(dataset_labels == 0)
+
+    for k in range(num_of_bts0//bts_1.shape[0]):
+        bts_1 = bts_1 + np.random.normal(0, awgn_std + k//3, (bts_1.shape[0], bts_1.shape[1], bts_1.shape[2])) #adding AWGN
+        dataset = np.append(dataset, bts_1, 0)
+        dataset_labels = np.append(dataset_labels, np.ones(bts_1.shape[0]))
+
+    for k in range(num_of_bts0//bts_2.shape[0] ):
+        bts_2 = bts_2 + np.random.normal(0, awgn_std + k//3, (bts_2.shape[0], bts_2.shape[1], bts_2.shape[2])) #adding AWGN
+        dataset = np.append(dataset, bts_2, 0)
+        dataset_labels = np.append(dataset_labels, 2 * np.ones(bts_2.shape[0]))
+
+    return dataset, dataset_labels

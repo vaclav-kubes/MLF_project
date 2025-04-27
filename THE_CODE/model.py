@@ -16,7 +16,7 @@ from sklearn.model_selection import train_test_split
 
 ######## VARIABLES ############
 SAVE_MODEL = True
-std_awgn = 3
+std_awgn = 2
 train_test_ratio = 0.2
 ######## DATA LOADING #########
 
@@ -39,7 +39,7 @@ print("Final size of dataset: ", dataset.shape)
 
 ######## DATA PREPROCESSING #########
 
-x_train, x_test, y_train, y_test = train_test_split(dataset, dataset_labels, test_size=0.2, random_state=42)#extract_data.split_data(dataset, dataset_labels, train_test_ratio)
+x_train, y_train, x_test,  y_test = extract_data.split_data(dataset, dataset_labels, train_test_ratio)
 
 print("Num of bts0, bts1, bts2 in training data: ", np.count_nonzero(y_train == 0), np.count_nonzero(y_train == 1), np.count_nonzero(y_train == 2), "num of train: ", len(y_train))
 print("Num of bts0, bts1, bts2 in test data: ", np.count_nonzero(y_test == 0), np.count_nonzero(y_test == 1), np.count_nonzero(y_test == 2), "num of test: ", len(y_test))
@@ -49,11 +49,14 @@ y_test_encoded = to_categorical(y_test, num_classes = 3)
 
 x_train_mean = np.mean(x_train) #Z-score normalization of training data
 x_train_deviation = np.std(x_train)
+#mean = np.mean(dataset)
+#deviation = np.std(dataset)
+np.save("THE_CODE\\mean_dev.npy",np.array([x_train_mean, x_train_deviation]))
 x_train_normalized = (x_train - x_train_mean) / x_train_deviation
 
-x_test_mean = np.mean(x_test) #Z-score normalization of test data
-x_test_deviation = np.std(x_test)
-x_test_normalized = (x_test - x_test_mean) / x_test_deviation
+#x_test_mean = np.mean(x_test) #Z-score normalization of test data
+#x_test_deviation = np.std(x_test)
+x_test_normalized = (x_test - x_train_mean) / x_train_deviation
 
 #print(x_train_normalized.shape)
 x_train_normalized = x_train_normalized.reshape(-1, 72, 48,1)
@@ -87,7 +90,7 @@ early_stopping = EarlyStopping(monitor='val_loss', patience=7, verbose=1, restor
 #if LOAD_SAVED_MODEL:
 
 #else:                                                                                                 #0.5
-history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=20, validation_split = 0.2, callbacks = early_stopping)#validation_data = (x_test_normalized, y_test_encoded), shuffle = True, validation_split = 0.2
+history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=20, validation_data = (x_test_normalized, y_test_encoded), callbacks = early_stopping)#validation_split = 0.2, , shuffle = True, validation_split = 0.2
 
 if SAVE_MODEL: model.save("THE_CODE\\model.keras")
 
@@ -111,7 +114,7 @@ plt.plot(history.history['val_accuracy'])
 plt.legend(['training', 'validation'])
 plt.grid('both')
 
-"""
+
 y_pred = model.predict(x_test_normalized)
 #print(y_pred)
 y_pred_classes = np.argmax(y_pred, axis=1)
@@ -121,22 +124,14 @@ y_true_classes = np.argmax(y_test_encoded, axis=1)
 cm = confusion_matrix(y_true_classes, y_pred_classes)
 print(cm)
 ConfusionMatrixDisplay.from_predictions(y_true_classes,y_pred_classes)
-"""
+
 
 unknown_data = extract_data.load_data("MPA-MLF_data\\Test", (72, 48))
-mean = np.mean(unknown_data) #Z-score normalization of training data
-deviation = np.std(unknown_data)
-unknown_data_norm = (unknown_data - mean) / deviation
+#mean = np.mean(unknown_data) #Z-score normalization of training data
+#deviation = np.std(unknown_data)
+unknown_data_norm = (unknown_data - x_train_mean) / x_train_deviation
 pred = model.predict(unknown_data_norm.reshape(-1, 72, 48, 1))
 array_to_save = np.vstack((np.arange(0, 119 + 1), np.argmax(pred, axis=1))).astype(np.int16)
 np.savetxt("THE_CODE\\my_guess.csv", array_to_save.transpose(),"%d", ",", header="ID,target", comments="")
 
-"""
-import csv
-with open('THE_CODE\\my_guess.csv', mode='w', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow(['ID', 'target'])  # Write header
-    for i, value in enumerate(np.argmax(pred, axis=1)):
-        writer.writerow([i, value])
-"""
 plt.show()

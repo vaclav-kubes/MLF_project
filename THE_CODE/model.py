@@ -5,19 +5,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from keras.models import Sequential
-from keras.optimizers import Adam
+from keras.optimizers import Adam, AdamW
 from keras.utils import to_categorical
 from keras.callbacks import EarlyStopping
 from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Input, BatchNormalization, AveragePooling2D
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import confusion_matrix
 import extract_data
-from sklearn.model_selection import train_test_split
+#from sklearn.model_selection import train_test_split
 
 ######## VARIABLES ############
+
 SAVE_MODEL = True
-std_awgn = 2
+std_awgn = 2 #standard deviation for awgn addition
 train_test_ratio = 0.2
+
 ######## DATA LOADING #########
 
 dataset = extract_data.load_data("MPA-MLF_data\\Train", (72, 48))
@@ -33,6 +35,7 @@ dataset_labels = extract_data.load_labels("MPA-MLF_data\\label_train.csv")
 #print(np.std(dataset))
 
 ####### DATA AUGMENTATION ########
+
 dataset, dataset_labels = extract_data.data_augm(dataset, dataset_labels, std_awgn)
 
 print("Final size of dataset: ", dataset.shape)
@@ -70,27 +73,27 @@ model = Sequential()
 model.add(Input(shape=(72, 48, 1)))
 model.add(Conv2D(32, kernel_size=(5,5), activation = 'relu'))
 model.add(MaxPooling2D(pool_size=(2,2)))
-model.add(Flatten())#input_shape=(32, 32, 2)
+model.add(Flatten()) #input_shape=(32, 32, 2)
 #model.add(BatchNormalization())
 model.add(Dense(64, activation='relu')) #128
+#model.add(BatchNormalization())
 model.add(Dense(32, activation='relu'))
 #model.add(BatchNormalization())
 model.add(Dense(3, activation='softmax'))
-
 
 optimizer = Adam(learning_rate = 0.001)
 model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
 model.summary()
 
-
-early_stopping = EarlyStopping(monitor='val_loss', patience=7, verbose=1, restore_best_weights=True  )
+early_stopping = EarlyStopping(monitor='val_loss', patience=7, verbose=1, restore_best_weights=True)
 
 ######## TRAINING #########
+
 #if LOAD_SAVED_MODEL:
 
 #else:                                                                                                 #0.5
-history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=20, validation_data = (x_test_normalized, y_test_encoded), callbacks = early_stopping)#validation_split = 0.2, , shuffle = True, validation_split = 0.2
+history = model.fit(x_train_normalized, y_train_encoded, epochs=30, batch_size=20, validation_data = (x_test_normalized, y_test_encoded), callbacks = early_stopping)#validation_split = 0.2, shuffle = True
 
 if SAVE_MODEL: model.save("THE_CODE\\model.keras")
 
@@ -102,18 +105,19 @@ print('Test loss:', score[0])
 print(f'Test accuracy: {score[1]*100} %')
 
 plt.figure()
+plt.subplot(2, 1, 1)
 plt.title('Loss')
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
 plt.legend(['training', 'validation'])
 plt.grid('both')
-plt.figure()
+
+plt.subplot(2, 1, 2)
 plt.title('Accuracy')
 plt.plot(history.history['accuracy'])
 plt.plot(history.history['val_accuracy'])
 plt.legend(['training', 'validation'])
 plt.grid('both')
-
 
 y_pred = model.predict(x_test_normalized)
 #print(y_pred)
@@ -124,7 +128,6 @@ y_true_classes = np.argmax(y_test_encoded, axis=1)
 cm = confusion_matrix(y_true_classes, y_pred_classes)
 print(cm)
 ConfusionMatrixDisplay.from_predictions(y_true_classes,y_pred_classes)
-
 
 unknown_data = extract_data.load_data("MPA-MLF_data\\Test", (72, 48))
 #mean = np.mean(unknown_data) #Z-score normalization of training data

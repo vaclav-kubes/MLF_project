@@ -44,6 +44,6 @@ x_test_normalized = (x_test - x_train_mean) / x_train_deviation
 x_train_normalized = x_train_normalized.reshape(-1, 72, 48,1)
 x_test_normalized = x_test_normalized.reshape(-1, 72, 48, 1)
 
-np.savez_compressed("aux_data_pool\\train_data.npz", x = x_train_normalized, y = y_train_encoded)
+np.savez_compressed("aux_data_pool\\train_data.npz", x = x_train_normalized, y = y_train_encoded)#
 np.savez_compressed("aux_data_pool\\test_data.npz", x = x_test_normalized, y = y_test_encoded)
 

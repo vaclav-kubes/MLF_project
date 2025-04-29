@@ -14,7 +14,7 @@ from sklearn.metrics import confusion_matrix
 
 ######## VARIABLES ############
 
-SAVE_MODEL = False
+SAVE_MODEL = True
 
 ######## DATA LOADING #########
 train = np.load("aux_data_pool\\train_data.npz")
@@ -27,13 +27,17 @@ x_test_normalized = test['x']
 ######## CNN MODEL #########
 pool_size = [(2,2),(5,5), (8,8)]
 kernel_size = [(2,2),(5,5), (8,8)]
-n_filt = [16, 32, 64]
+n_filt = [32]#[16, 32, 64]
+#maxpooling + 2layer works well
 for k in n_filt:
+    print(k)
+    print()
+    print()
     model = Sequential()
     #model.add(Input(x_train_normalized.shape))
     model.add(Input(shape=(72, 48, 1)))
     model.add(Conv2D(k, kernel_size=(5,5), activation = 'relu'))
-    model.add(AveragePooling2D(pool_size=(2,2)))
+    model.add(MaxPooling2D(pool_size=(2,2)))
     model.add(Flatten()) #input_shape=(32, 32, 2)
     #model.add(BatchNormalization())
     model.add(Dense(64, activation='relu'))
@@ -66,7 +70,7 @@ for k in n_filt:
     score = model.evaluate(x_test_normalized, y_test_encoded, verbose=1)
     print('Test loss:', score[0])
     print(f'Test accuracy: {score[1]*100} %')
-    """
+    
     plt.figure()
     plt.subplot(2, 1, 1)
     plt.title('Loss')
@@ -81,9 +85,9 @@ for k in n_filt:
     plt.plot(history.history['val_accuracy'])
     plt.legend(['training', 'validation'])
     plt.grid('both')
-    """
-    data = np.array( [history.history['loss'], history.history['val_loss'],  history.history['accuracy'], history.history['val_accuracy']])
-    np.save("history_pool\\history_nfilt_" + str(k)+".npy", data)
+    
+    #data = np.array( [history.history['loss'], history.history['val_loss'],  history.history['accuracy'], history.history['val_accuracy']])
+    #np.save("history_pool\\history_nfilt_" + str(k)+".npy", data)
 
 y_pred = model.predict(x_test_normalized)
 

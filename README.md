@@ -3,7 +3,7 @@
 ## Project Overview
 This project focuses on the classification of 5G base stations to detect the presence of false base stations (FBS), also known as rogue base stations (RBS) or IMSI catchers. These malicious devices attempt to impersonate legitimate network towers, posing security risks by intercepting user data.
 
-The goal is to develop a machine learning model that can classify whether a given signal comes from a legitimate base station or a rogue one, based on channel frequency response data extracted from LTE/4G signals.
+The goal is to develop a machine learning model that could classify whether a given signal comes from a legitimate base station or a rogue one, based on channel frequency response data extracted from LTE/4G signals.
 
 ## Theoretical Background
 ### Mobile Network Base Stations

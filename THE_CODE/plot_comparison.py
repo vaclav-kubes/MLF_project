@@ -1,9 +1,77 @@
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import re
+
+history_path = r"D:\School\VUT_1MGR_2\MLF\Project\MLF_project-1\history_pool"
+
+files = os.listdir("history_pool")
+nfilt_values = sorted(set(
+    int(re.findall(r"history_nfilt_(\d+).npy", f)[0])
+    for f in files if f.startswith("history_nfilt_")
+))
+
+#nfilt_values = [16, 32, 64]
+colors = ['r', 'b', 'g']
+
+loss_labels = []
+acc_labels = []
+histories = {}
+for nfilt in nfilt_values:
+    file_path = os.path.join(history_path, f"history_nfilt_{nfilt}.npy")
+    data = np.load(file_path, allow_pickle=True)
+    histories[nfilt] = data
+    
+    print(f"nfilt={nfilt} -> min train acc: {np.min(data[2])}, min val acc: {np.min(data[3])}")
+    
+    loss_labels.extend([
+        f'Training: Conv. filters {nfilt}',
+        f'Validation: Conv. filters {nfilt}'
+    ])
+    acc_labels.extend([
+        f'Training: Conv. filters {nfilt}',
+        f'Validation: Conv. filters {nfilt}'
+    ])
+
+# Loss graph
+plt.figure()
+for nfilt, color in zip(nfilt_values, colors):
+    data = histories[nfilt]
+    epochs = range(1, len(data[1]) + 1)
+    plt.semilogy(epochs, np.abs(data[0]), f"{color}--")
+    plt.semilogy(epochs, np.abs(data[1]), f"{color}-.")
+plt.grid(True, 'both', 'both')
+plt.xlabel("Epoch")
+plt.title("Loss")
+plt.minorticks_on()
+plt.xticks(range(1, 30, 2))
+plt.xlim(left=1, right=30)
+plt.legend(loss_labels)
+
+# Accuracy graph
+plt.figure()
+for nfilt, color in zip(nfilt_values, colors):
+    data = histories[nfilt]
+    epochs = range(1, len(data[1]) + 1)
+    plt.plot(epochs, data[2], f"{color}--")
+    plt.plot(epochs, data[3], f"{color}-.")
+plt.grid(True, 'both', 'both')
+plt.xlabel("Epoch")
+plt.title("Accuracy")
+plt.minorticks_on()
+plt.xticks(range(1, 30, 2))
+plt.xlim(left=1, right=30)
+plt.legend(acc_labels, loc="lower right")
+
+plt.show()
+
+"""import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-nfilt16 = np.load("..\\history_pool\\history_nfilt_16.npy")
-nfilt32 = np.load("..\\history_pool\\history_nfilt_32.npy")
-nfilt64 = np.load("..\\history_pool\\history_nfilt_64.npy")
+nfilt16 = np.load("\\history_pool\\history_nfilt_16.npy")
+nfilt32 = np.load("\\history_pool\\history_nfilt_32.npy")
+nfilt64 = np.load("\\history_pool\\history_nfilt_64.npy")
 #x_axis = range(1, len(adam[1])+1)
 
 print(np.min(nfilt16[2]), np.min(nfilt16[3]))
@@ -21,7 +89,7 @@ plt.title("Loss")
 plt.minorticks_on()
 plt.xticks(range(1,30,2))
 plt.xlim(left=1, right=30)
-plt.legend(['Trainig: Conv. filters 16', "Validation: Conv. filters 16", 'Trainig: Conv. filters 32', "Validation: Conv. filters 32", 'Trainig: Conv. filters 64', "Validation: Conv. filters 64"])
+plt.legend(['Training: Conv. filters 16', "Validation: Conv. filters 16", 'Training: Conv. filters 32', "Validation: Conv. filters 32", 'Training: Conv. filters 64', "Validation: Conv. filters 64"])
 
 
 plt.figure()
@@ -42,8 +110,8 @@ plt.title("Accuracy")
 plt.minorticks_on()
 plt.xticks(range(1,30,2))
 plt.xlim(left=1, right=30)
-plt.legend(['Trainig: Conv. filters 16', "Validation: Conv. filters 16", 'Trainig: Conv. filters 32', "Validation: Conv. filters 32", 'Trainig: Conv. filters 64', "Validation: Conv. filters 64"])
-plt.show()
+plt.legend(['Training: Conv. filters 16', "Validation: Conv. filters 16", 'Training: Conv. filters 32', "Validation: Conv. filters 32", 'Training: Conv. filters 64', "Validation: Conv. filters 64"])
+plt.show()"""
 
 """
 fig, ax = plt.subplots()

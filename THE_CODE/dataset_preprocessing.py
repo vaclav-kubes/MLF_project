@@ -1,5 +1,7 @@
 
 ######## IMPORTS #########
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' #hide info from CPU optimizer and Deep Neural Network Library 
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,7 +12,7 @@ import extract_data
 ######## VARIABLES ############
 
 std_awgn = 2 #standard deviation for awgn addition
-train_test_ratio = 0.2
+train_test_ratio = 0.1
 
 ######## DATA LOADING #########
 

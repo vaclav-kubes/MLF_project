@@ -11,7 +11,7 @@ from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Input, BatchNorma
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import confusion_matrix
 #from sklearn.model_selection import train_test_split
-from tensorflow.keras.utils import plot_model
+#from tensorflow.keras.utils import plot_model
 import matplotlib.image as mpimg
 import os
 
@@ -39,8 +39,10 @@ for k in n_filt:
     model = Sequential()
     #model.add(Input(x_train_normalized.shape))
     model.add(Input(shape=(72, 48, 1)))
-    model.add(Conv2D(k, kernel_size=(5,5), activation = 'relu'))
+    model.add(Conv2D(32, kernel_size=(2,2), activation = 'relu'))
     model.add(MaxPooling2D(pool_size=(2,2)))
+    model.add(Conv2D(16, kernel_size=(5,5), activation = 'relu'))
+    model.add(MaxPooling2D(pool_size=(3,3)))
     model.add(Flatten()) #input_shape=(32, 32, 2)
     #model.add(BatchNormalization())
     model.add(Dense(64, activation='relu'))
@@ -56,16 +58,16 @@ for k in n_filt:
 
     model.summary()
 
-    plot_model(model, to_file='model_architecture.png', show_shapes=True, show_layer_names=True)
+    #plot_model(model, to_file='model_architecture.png', show_shapes=True, show_layer_names=True)
 
-    if os.path.exists('model_architecture.png'):
-        img = mpimg.imread('model_architecture.png')
-        plt.figure
-        plt.imshow(img)
-        plt.axis('off')
-        #plt.show(block=False)
-    else:
-        print("Warning: The image 'model_architecture.png' was not created!")    
+    #if os.path.exists('model_architecture.png'):
+    #     img = mpimg.imread('model_architecture.png')
+    #     plt.figure
+    #     plt.imshow(img)
+    #     plt.axis('off')
+    #     #plt.show(block=False)
+    # else:
+    #     print("Warning: The image 'model_architecture.png' was not created!")    
 
     early_stopping = EarlyStopping(monitor='val_loss', patience=7, verbose=1, restore_best_weights=True)
 

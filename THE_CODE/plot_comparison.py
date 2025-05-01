@@ -1,15 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-nfilt16 = np.load("..\\history_pool\\history_nfilt_16.npy")
-nfilt32 = np.load("..\\history_pool\\history_nfilt_32.npy")
-nfilt64 = np.load("..\\history_pool\\history_nfilt_64.npy")
+nfilt16 = np.load("history_pool\\history_adam.npy")
+nfilt32 = np.load("history_pool\\history_adamw.npy")
+nfilt64 = np.load("history_pool\\history_SGD.npy")
 #x_axis = range(1, len(adam[1])+1)
 
-print(np.min(nfilt16[2]), np.min(nfilt16[3]))
-print(np.min(nfilt32[2]), np.min(nfilt32[3]))
-print(np.min(nfilt64[2]), np.min(nfilt64[3]))
+#print(np.min(nfilt16[2]), np.min(nfilt16[3]))
+#print(np.min(nfilt32[2]), np.min(nfilt32[3]))
+#print(np.min(nfilt64[2]), np.min(nfilt64[3]))
 
+legend = ['Training: Adam', "Validation: Adam",\
+           'Training: AdamW', "Validation: AdamW", \
+            'Training: SGD', "Validation: SGD"]
 
 plt.figure()
 plt.semilogy(range(1, len(nfilt16[1])+1),np.abs( nfilt16[0]),"r--", range(1, len(nfilt16[1])+1), np.abs(nfilt16[1]), "r-.")
@@ -17,11 +20,11 @@ plt.semilogy( range(1, len(nfilt32[1])+1), np.abs(nfilt32[0]),"b--", range(1, le
 plt.semilogy(range(1, len(nfilt64[1])+1), np.abs(nfilt64[0]),"g--", range(1, len(nfilt64[1])+1), np.abs(nfilt64[1]), "g-.")
 plt.grid(True, 'both', 'both')
 plt.xlabel("Epoch")
-plt.title("Loss")
+plt.ylabel("Loss")
 plt.minorticks_on()
 plt.xticks(range(1,30,2))
 plt.xlim(left=1, right=30)
-plt.legend(['Trainig: Conv. filters 16', "Validation: Conv. filters 16", 'Trainig: Conv. filters 32', "Validation: Conv. filters 32", 'Trainig: Conv. filters 64', "Validation: Conv. filters 64"])
+plt.legend(legend)
 
 
 plt.figure()
@@ -38,11 +41,11 @@ plt.plot(range(1, len(nfilt64[1])+1), nfilt64[2],"g--", range(1, len(nfilt64[1])
 
 plt.grid(True, 'both', 'both')
 plt.xlabel("Epoch")
-plt.title("Accuracy")
+plt.ylabel("Accuracy")
 plt.minorticks_on()
 plt.xticks(range(1,30,2))
 plt.xlim(left=1, right=30)
-plt.legend(['Trainig: Conv. filters 16', "Validation: Conv. filters 16", 'Trainig: Conv. filters 32', "Validation: Conv. filters 32", 'Trainig: Conv. filters 64', "Validation: Conv. filters 64"])
+plt.legend(legend)
 plt.show()
 
 """

@@ -1,3 +1,6 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' #hide info from CPU optimizer and Deep Neural Network Library 
+
 import numpy as np
 import extract_data as ed
 import matplotlib.pyplot as plt

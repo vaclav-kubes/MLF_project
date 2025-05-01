@@ -8,7 +8,7 @@ font = {'family': 'serif',
         }
 
 data = np.array(0)
-data = np.load("D:\\Users\\User\\Documents\\MLF_project\\MPA-MLF_data\\Train\\0.npy", "r")
+data = np.load("D:\School\VUT_1MGR_2\MLF\Project\MLF_project-1\MPA-MLF_data\Train\\0.npy", "r")
 
 print(data.shape )
 ax = plt.imshow(data, cmap='gray')

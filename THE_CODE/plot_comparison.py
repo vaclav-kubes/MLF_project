@@ -6,10 +6,7 @@ import re
 history_path = r"D:\School\VUT_1MGR_2\MLF\Project\MLF_project-1\history_pool"
 
 files = os.listdir("history_pool")
-nfilt_values = sorted(set(
-    int(re.findall(r"history_nfilt_(\d+).npy", f)[0])
-    for f in files if f.startswith("history_nfilt_")
-))
+nfilt_values = [32, 64] 
 
 #nfilt_values = [16, 32, 64]
 colors = ['r', 'b', 'g']
@@ -35,12 +32,12 @@ for nfilt in nfilt_values:
 
 # Loss graph
 plt.figure()
-for nfilt, color in zip(nfilt_values, colors):
+for nfilt, color in zip(nfilt_values, colors[:len(nfilt_values)]):
     data = histories[nfilt]
     epochs = range(1, len(data[1]) + 1)
     plt.semilogy(epochs, np.abs(data[0]), f"{color}--")
     plt.semilogy(epochs, np.abs(data[1]), f"{color}-.")
-plt.grid(True, 'both', 'both')
+plt.grid(True, which='both', axis='both')
 plt.xlabel("Epoch")
 plt.title("Loss")
 plt.minorticks_on()
@@ -50,12 +47,12 @@ plt.legend(loss_labels)
 
 # Accuracy graph
 plt.figure()
-for nfilt, color in zip(nfilt_values, colors):
+for nfilt, color in zip(nfilt_values, colors[:len(nfilt_values)]):
     data = histories[nfilt]
     epochs = range(1, len(data[1]) + 1)
     plt.plot(epochs, data[2], f"{color}--")
     plt.plot(epochs, data[3], f"{color}-.")
-plt.grid(True, 'both', 'both')
+plt.grid(True, which='both', axis='both')
 plt.xlabel("Epoch")
 plt.title("Accuracy")
 plt.minorticks_on()

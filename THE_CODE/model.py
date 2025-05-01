@@ -10,7 +10,7 @@ import matplotlib.image as mpimg
 from keras.models import Sequential
 from keras.optimizers import Adam, AdamW, SGD
 from keras.callbacks import EarlyStopping
-from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Input, BatchNormalization, AveragePooling2D
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Input, BatchNormalization, Dropout, AveragePooling2D
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import f1_score
@@ -40,10 +40,12 @@ best_preds   = None
 best_true    = None
 best_params  = None   # (nf1, k1, nf2, k2)
 best_history = None
+best_val_loss = float('inf')
+best_val_acc = 0
 
 ######### HYPERPARAMETER GRID #########
-n_filt = [32, 64]
-kernel_size = [(2,2), (5,5)]
+n_filt = [16, 32, 64]
+kernel_size = [(2,2), (5,5), (8,8)]
 
 ######## CNN MODEL #########
 for nf1 in n_filt:
@@ -61,11 +63,13 @@ for nf1 in n_filt:
             model.add(Conv2D(nf2, kernel_size=k2, activation='relu'))
             model.add(MaxPooling2D(pool_size=(3,3)))
             model.add(Flatten()) 
-            #model.add(BatchNormalization())
+            model.add(BatchNormalization())
             model.add(Dense(64, activation='relu'))
-            #model.add(BatchNormalization())
+            model.add(Dropout(0.3))
+            model.add(BatchNormalization())
             model.add(Dense(32, activation='relu'))
-            #model.add(BatchNormalization())
+            model.add(Dropout(0.3))
+            model.add(BatchNormalization())
             model.add(Dense(3, activation='softmax'))
 
             optimizer = Adam(learning_rate = 0.001)
@@ -78,25 +82,19 @@ for nf1 in n_filt:
             early_stopping = EarlyStopping(monitor='val_loss', patience=3, verbose=1, restore_best_weights=True)
 
             ######## TRAINING #########
-
-            #if LOAD_SAVED_MODEL:
-
-            #else:                                                                                                 #0.5
             history = model.fit(
                 x_train_normalized, y_train_encoded,
                 epochs=30,
-                batch_size=20,
-                validation_split=0.2,
+                batch_size=15,
+                validation_split=0.3,
                 callbacks=early_stopping
             ) # validation_data=(x_test_normalized, y_test_encoded),shuffle = True, epochs=30, batch_size=20
 
             y_pred = model.predict(x_test_normalized)
-
             y_pred_classes = np.argmax(y_pred, axis=1)
             y_true_classes = np.argmax(y_test_encoded, axis=1)
 
-
-            ######## SAVE HISTORY TO SEE THE INFLUENCE OF CHANGING FILTER #########
+            ######## SAVE HISTORY TO SEE THE INFLUENCE OF CHANGING NUMBER OF FILTERS #########
             if k1 == SAVE_HISTORY_KERNEL and k2 == SAVE_HISTORY_KERNEL:
                 data = np.array([
                     history.history['loss'],
@@ -116,14 +114,23 @@ for nf1 in n_filt:
                     history.history['val_accuracy']
                 ])
                 np.save(f"history_pool\\history_kernel_size_{k1[0]}.npy", data)
-                print(f"[SAVED] History for {kernel_size} kernel size with fixed number of filters: {SAVE_HISTORY_FILTER}")
+                print(f"[SAVED] History for {k1} kernel size with fixed number of filters: {SAVE_HISTORY_FILTER}")
 
             f1 = f1_score(y_true_classes, y_pred_classes, average='macro')
             print(f"F1 score for Conv2D_1: filters={nf1}, kernel={k1}; Conv2D_2: filters={nf2}, kernel={k2}: {f1:.4f}")
 
             ######## UPDATE BEST MODEL #########
-            if f1 > best_f1:
+            current_val_loss = history.history['val_loss'][-1]
+            current_val_acc  = history.history['val_accuracy'][-1]
+
+            if (
+                f1 > best_f1 or
+                (f1 == best_f1 and current_val_loss < best_val_loss) or
+                (f1 == best_f1 and current_val_loss == best_val_loss and current_val_acc > best_val_acc)
+            ):
                 best_f1 = f1
+                best_val_loss = current_val_loss
+                best_val_acc = current_val_acc
                 best_model = model
                 best_pred = y_pred_classes
                 best_true = y_true_classes

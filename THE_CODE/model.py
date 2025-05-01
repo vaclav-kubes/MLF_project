@@ -38,110 +38,130 @@ best_f1      = 0
 best_model   = None
 best_preds   = None
 best_true    = None
-best_params  = None   # (nf1, k1, nf2, k2)
+best_params  = None   #(nf1, k1, p1, nf2, k2, p2)
 best_history = None
 best_val_loss = float('inf')
 best_val_acc = 0
 
 ######### HYPERPARAMETER GRID #########
-n_filt = [16, 32, 64]
-kernel_size = [(2,2), (5,5), (8,8)]
+n_filt = [16, 24, 32, 48, 64]
+kernel_size = [(2,2), (5,5), (8,8)] 
+pool_size = [(2,2), (3,3), (4,4), (5,5)]
+add_layer = [0, 1]
 
 ######## CNN MODEL #########
-for nf1 in n_filt:
-    nf2 = nf1 // 2
-    for k1 in kernel_size:
-        for k2 in kernel_size:
-            print(f"\nTraining: Conv2D_1: filters={nf1}, kernel={k1}; Conv2D_2: filters={nf2}, kernel={k2}...")
-            
-            ######## MODEL BUILDING #########
-            model = Sequential()
-            #model.add(Input(x_train_normalized.shape))
-            model.add(Input(shape=(72, 48, 1)))
-            model.add(Conv2D(nf1, kernel_size=k1, activation='relu'))
-            model.add(MaxPooling2D(pool_size=(2,2)))
-            model.add(Conv2D(nf2, kernel_size=k2, activation='relu'))
-            model.add(MaxPooling2D(pool_size=(3,3)))
-            model.add(Flatten()) 
-            model.add(BatchNormalization())
-            model.add(Dense(64, activation='relu'))
-            model.add(Dropout(0.3))
-            model.add(BatchNormalization())
-            model.add(Dense(32, activation='relu'))
-            model.add(Dropout(0.3))
-            model.add(BatchNormalization())
-            model.add(Dense(3, activation='softmax'))
+for p1 in pool_size:
+    for p2 in pool_size:
+        if p1[0] > p2[0]: # pool size 1 always < pool size 2
+            continue
+        for nf1 in n_filt:
+            nf2 = nf1 // 2
+            for k1 in kernel_size:
+                for k2 in kernel_size:
+                    print(f"\nTraining: Conv2D_1: filters={nf1}, kernel={k1}; Pool1: {p1}; Conv2D_2: filters={nf2}, kernel={k2}¨; Pool2: {p2}")
+                    
+                    ######## MODEL BUILDING #########
+                    model = Sequential()
+                    #model.add(Input(x_train_normalized.shape))
+                    model.add(Input(shape=(72, 48, 1)))
 
-            optimizer = Adam(learning_rate = 0.001)
+                    model.add(Conv2D(nf1, kernel_size=k1, activation='relu'))
+                    model.add(MaxPooling2D(pool_size=p1))
 
-            #optimizer = opt[k]
-            model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+                    model.add(Conv2D(nf2, kernel_size=k2, activation='relu'))
+                    model.add(MaxPooling2D(pool_size=p2))
 
-            #model.summary()
+                    model.add(Flatten()) 
 
-            early_stopping = EarlyStopping(monitor='val_loss', patience=3, verbose=1, restore_best_weights=True)
+                    if np.random.choice(add_layer):
+                        model.add(BatchNormalization())
 
-            ######## TRAINING #########
-            history = model.fit(
-                x_train_normalized, y_train_encoded,
-                epochs=30,
-                batch_size=15,
-                validation_split=0.3,
-                callbacks=early_stopping
-            ) # validation_data=(x_test_normalized, y_test_encoded),shuffle = True, epochs=30, batch_size=20
+                    model.add(Dense(64, activation='relu'))
 
-            y_pred = model.predict(x_test_normalized)
-            y_pred_classes = np.argmax(y_pred, axis=1)
-            y_true_classes = np.argmax(y_test_encoded, axis=1)
+                    model.add(Dropout(round(np.random.uniform(0.0, 0.5), 3)))
+                    
+                    if np.random.choice(add_layer):
+                        model.add(BatchNormalization())
 
-            ######## SAVE HISTORY TO SEE THE INFLUENCE OF CHANGING NUMBER OF FILTERS #########
-            if k1 == SAVE_HISTORY_KERNEL and k2 == SAVE_HISTORY_KERNEL:
-                data = np.array([
-                    history.history['loss'],
-                    history.history['val_loss'],
-                    history.history['accuracy'],
-                    history.history['val_accuracy']
-                ])
-                np.save(f"history_pool\\history_nfilt_{nf1}.npy", data)
-                print(f"[SAVED] History for {nf1} filters with fixed number of kernels: {SAVE_HISTORY_KERNEL}")
+                    model.add(Dense(32, activation='relu'))
 
-            ######## SAVE HISTORY TO SEE THE INFLUENCE OF CHANGING KERNEL SIZE #########
-            if nf1 == SAVE_HISTORY_FILTER:
-                data = np.array([
-                    history.history['loss'],
-                    history.history['val_loss'],
-                    history.history['accuracy'],
-                    history.history['val_accuracy']
-                ])
-                np.save(f"history_pool\\history_kernel_size_{k1[0]}.npy", data)
-                print(f"[SAVED] History for {k1} kernel size with fixed number of filters: {SAVE_HISTORY_FILTER}")
+                    model.add(Dropout(round(np.random.uniform(0.0, 0.5), 3)))
 
-            f1 = f1_score(y_true_classes, y_pred_classes, average='macro')
-            print(f"F1 score for Conv2D_1: filters={nf1}, kernel={k1}; Conv2D_2: filters={nf2}, kernel={k2}: {f1:.4f}")
+                    if np.random.choice(add_layer):
+                        model.add(BatchNormalization())
 
-            ######## UPDATE BEST MODEL #########
-            current_val_loss = history.history['val_loss'][-1]
-            current_val_acc  = history.history['val_accuracy'][-1]
+                    model.add(Dense(3, activation='softmax')) # last layer
 
-            if (
-                f1 > best_f1 or
-                (f1 == best_f1 and current_val_loss < best_val_loss) or
-                (f1 == best_f1 and current_val_loss == best_val_loss and current_val_acc > best_val_acc)
-            ):
-                best_f1 = f1
-                best_val_loss = current_val_loss
-                best_val_acc = current_val_acc
-                best_model = model
-                best_pred = y_pred_classes
-                best_true = y_true_classes
-                best_history = history.history
-                best_config = (nf1, k1, nf2, k2)
+                    optimizer = Adam(learning_rate = 0.001)
+
+                    #optimizer = opt[k]
+                    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+
+                    #model.summary()
+
+                    early_stopping = EarlyStopping(monitor='val_loss', patience=4, verbose=1, restore_best_weights=True)
+
+                    ######## TRAINING #########
+                    history = model.fit(
+                        x_train_normalized, y_train_encoded,
+                        epochs=30,
+                        batch_size=20,
+                        validation_split=0.2,
+                        callbacks=early_stopping
+                    ) # validation_data=(x_test_normalized, y_test_encoded),shuffle = True, epochs=30, batch_size=20
+
+                    y_pred = model.predict(x_test_normalized)
+                    y_pred_classes = np.argmax(y_pred, axis=1)
+                    y_true_classes = np.argmax(y_test_encoded, axis=1)
+
+                    ######## SAVE HISTORY TO SEE THE INFLUENCE OF CHANGING NUMBER OF FILTERS #########
+                    if k1 == SAVE_HISTORY_KERNEL and k2 == SAVE_HISTORY_KERNEL:
+                        data = np.array([
+                            history.history['loss'],
+                            history.history['val_loss'],
+                            history.history['accuracy'],
+                            history.history['val_accuracy']
+                        ])
+                        np.save(f"history_pool\\history_nfilt_{nf1}.npy", data)
+                        print(f"[SAVED] History for {nf1} filters with fixed number of kernels: {SAVE_HISTORY_KERNEL}")
+
+                    ######## SAVE HISTORY TO SEE THE INFLUENCE OF CHANGING KERNEL SIZE #########
+                    if nf1 == SAVE_HISTORY_FILTER:
+                        data = np.array([
+                            history.history['loss'],
+                            history.history['val_loss'],
+                            history.history['accuracy'],
+                            history.history['val_accuracy']
+                        ])
+                        np.save(f"history_pool\\history_kernel_size_{k1[0]}.npy", data)
+                        print(f"[SAVED] History for {k1} kernel size with fixed number of filters: {SAVE_HISTORY_FILTER}")
+
+                    f1 = f1_score(y_true_classes, y_pred_classes, average='macro')
+                    print(f"F1 score for Conv2D_1: filters={nf1}, kernel={k1}; Pool1: {p1}; Conv2D_2: filters={nf2}, kernel={k2}¨; Pool2: {p2}: {f1:.4f}")
+
+                    ######## UPDATE BEST MODEL #########
+                    current_val_loss = history.history['val_loss'][-1]
+                    current_val_acc  = history.history['val_accuracy'][-1]
+
+                    if (
+                        f1 > best_f1 or
+                        (f1 == best_f1 and current_val_loss < best_val_loss) or
+                        (f1 == best_f1 and current_val_loss == best_val_loss and current_val_acc > best_val_acc)
+                    ):
+                        best_f1 = f1
+                        best_val_loss = current_val_loss
+                        best_val_acc = current_val_acc
+                        best_model = model
+                        best_pred = y_pred_classes
+                        best_true = y_true_classes
+                        best_history = history.history
+                        best_config = (nf1, k1, p1, nf2, k2, p2)
 
 
 ######## FINAL SAVE & DISPLAY #########
 if best_model is not None:
-    nf1, ks1, nf2, ks2 = best_config
-    print(f"\nBest model: F1={best_f1:.4f} | L1: {nf1}, {ks1} | L2: {nf2}, {ks2}")
+    nf1, k1, p1, nf2, k2, p2 = best_config
+    print(f"\nBest model: F1={best_f1:.4f} | CV1: {nf1}, {k1} | P1: {p1} | CV2: {nf2}, {k2} | P2: {p2} ")
     best_model.save("THE_CODE\\model.keras")
 
     plt.figure()

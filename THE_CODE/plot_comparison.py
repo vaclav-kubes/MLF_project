@@ -6,9 +6,9 @@ import re
 history_path = r"D:\School\VUT_1MGR_2\MLF\Project\MLF_project-1\history_pool"
 
 files = os.listdir("history_pool")
-nfilt_values = [32, 64] 
+nfilt_values = [16, 32, 64]
+kernel_size = [(2,2), (5,5), (8,8)]
 
-#nfilt_values = [16, 32, 64]
 colors = ['r', 'b', 'g']
 
 loss_labels = []

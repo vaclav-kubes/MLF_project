@@ -87,6 +87,7 @@ for p1 in pool_size:
                     use_bn2 = int(np.random.choice(add_layer))
                     do2 = round(np.random.uniform(0.0, 0.5), 3)
                     use_bn3 = int(np.random.choice(add_layer))
+                    run_id += 1
 
                     ######## CONTROL OF THE SHAPE VALIDIY #########
                     if not is_valid_output_shape(input_shape, k1, p1):
@@ -179,8 +180,6 @@ for p1 in pool_size:
 
                         f1 = f1_score(y_true_classes, y_pred_classes, average='macro')
                         print(f"F1 score for [RUN {run_id}]: {f1:.5f}")
-
-                        run_id += 1
 
                         ######## UPDATE BEST MODEL #########
                         current_val_loss = history.history['val_loss'][-1]

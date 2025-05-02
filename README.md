@@ -40,7 +40,9 @@ Clone this repository and run the preprocessing and training scripts:
 ```bash
  git clone https://github.com/vaclav-kubes/MLF_project.git
 ```
-
+## Team members
+- [Hana Daová](https://github.com/hakidaova)
+- [Václav Kubeš](https://github.com/vaclav-kubes)
 ## License
 This project is for educational purposes and follows the guidelines of the university course.
 

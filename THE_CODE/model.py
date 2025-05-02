@@ -6,6 +6,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' #hide info from CPU optimizer and Deep 
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import csv
 
 from keras.models import Sequential
 from keras.optimizers import Adam, AdamW, SGD
@@ -24,6 +25,7 @@ plot_model_once = True
 # For saving history only when these match:
 SAVE_HISTORY_FILTER = 32
 SAVE_HISTORY_KERNEL = (5, 5)
+SAVE_HISTORY_POOL = (2, 2)
 
 ######## DATA LOADING #########
 train = np.load("aux_data_pool\\train_data.npz")
@@ -42,12 +44,32 @@ best_params  = None   #(nf1, k1, p1, nf2, k2, p2)
 best_history = None
 best_val_loss = float('inf')
 best_val_acc = 0
+run_id = 1
+results_file = "results.csv"
+if not os.path.exists(results_file):
+    with open(results_file, mode='w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            'run', 'nf1', 'k1', 'p1', 'nf2', 'k2', 'p2',
+            'f1_score', 'val_loss', 'val_accuracy'
+        ])
+
 
 ######### HYPERPARAMETER GRID #########
+pool_size = [(2,2), (3,3), (4,4), (5,5)]
 n_filt = [16, 24, 32, 48, 64]
 kernel_size = [(2,2), (5,5), (8,8)] 
-pool_size = [(2,2), (3,3), (4,4), (5,5)]
 add_layer = [0, 1]
+
+def is_valid_output_shape(input_shape, kernel_size, pool_size):
+    h, w = input_shape
+    h = (h - kernel_size[0]) + 1
+    w = (w - kernel_size[1]) + 1
+    if h <= 0 or w <= 0:
+        return False
+    h = (h - pool_size[0]) // pool_size[0] + 1
+    w = (w - pool_size[1]) // pool_size[1] + 1
+    return h > 0 and w > 0
 
 ######## CNN MODEL #########
 for p1 in pool_size:
@@ -58,8 +80,25 @@ for p1 in pool_size:
             nf2 = nf1 // 2
             for k1 in kernel_size:
                 for k2 in kernel_size:
-                    print(f"\nTraining: Conv2D_1: filters={nf1}, kernel={k1}; Pool1: {p1}; Conv2D_2: filters={nf2}, kernel={k2}¨; Pool2: {p2}")
-                    
+                    input_shape = (72, 48)
+
+                    if not is_valid_output_shape(input_shape, k1, p1):
+                        continue
+                    intermediate_shape = (
+                        (input_shape[0] - k1[0]) + 1,
+                        (input_shape[1] - k1[1]) + 1
+                    )
+                    intermediate_shape = (
+                        (intermediate_shape[0] - p1[0]) // p1[0] + 1,
+                        (intermediate_shape[1] - p1[1]) // p1[1] + 1
+                    )
+
+                    if not is_valid_output_shape(intermediate_shape, k2, p2):
+                        continue
+
+                    print(f"\n[RUN {run_id}] Training: Conv2D_1: filters={nf1}, kernel={k1}; Pool1: {p1}; Conv2D_2: filters={nf2}, kernel={k2}; Pool2: {p2}")
+                    run_id += 1
+                                        
                     ######## MODEL BUILDING #########
                     model = Sequential()
                     #model.add(Input(x_train_normalized.shape))
@@ -76,14 +115,14 @@ for p1 in pool_size:
                     if np.random.choice(add_layer):
                         model.add(BatchNormalization())
 
-                    model.add(Dense(64, activation='relu'))
+                    model.add(Dense(48, activation='relu'))
 
                     model.add(Dropout(round(np.random.uniform(0.0, 0.5), 3)))
                     
                     if np.random.choice(add_layer):
                         model.add(BatchNormalization())
 
-                    model.add(Dense(32, activation='relu'))
+                    model.add(Dense(25, activation='relu'))
 
                     model.add(Dropout(round(np.random.uniform(0.0, 0.5), 3)))
 
@@ -102,61 +141,72 @@ for p1 in pool_size:
                     early_stopping = EarlyStopping(monitor='val_loss', patience=4, verbose=1, restore_best_weights=True)
 
                     ######## TRAINING #########
-                    history = model.fit(
-                        x_train_normalized, y_train_encoded,
-                        epochs=30,
-                        batch_size=20,
-                        validation_split=0.2,
-                        callbacks=early_stopping
-                    ) # validation_data=(x_test_normalized, y_test_encoded),shuffle = True, epochs=30, batch_size=20
+                    try:
+                        history = model.fit(
+                            x_train_normalized, y_train_encoded,
+                            epochs=30,
+                            batch_size=20,
+                            validation_split=0.2,
+                            callbacks=early_stopping
+                        ) # validation_data=(x_test_normalized, y_test_encoded),shuffle = True, epochs=30, batch_size=20
 
-                    y_pred = model.predict(x_test_normalized)
-                    y_pred_classes = np.argmax(y_pred, axis=1)
-                    y_true_classes = np.argmax(y_test_encoded, axis=1)
+                        y_pred = model.predict(x_test_normalized)
+                        y_pred_classes = np.argmax(y_pred, axis=1)
+                        y_true_classes = np.argmax(y_test_encoded, axis=1)
 
-                    ######## SAVE HISTORY TO SEE THE INFLUENCE OF CHANGING NUMBER OF FILTERS #########
-                    if k1 == SAVE_HISTORY_KERNEL and k2 == SAVE_HISTORY_KERNEL:
-                        data = np.array([
-                            history.history['loss'],
-                            history.history['val_loss'],
-                            history.history['accuracy'],
-                            history.history['val_accuracy']
-                        ])
-                        np.save(f"history_pool\\history_nfilt_{nf1}.npy", data)
-                        print(f"[SAVED] History for {nf1} filters with fixed number of kernels: {SAVE_HISTORY_KERNEL}")
+                        ######## SAVE HISTORY TO SEE THE INFLUENCE OF CHANGING NUMBER OF FILTERS #########
+                        #if k1 == SAVE_HISTORY_KERNEL and k2 == SAVE_HISTORY_KERNEL and p1 == SAVE_HISTORY_POOL and p2 == SAVE_HISTORY_POOL:
+                        #   data = np.array([
+                        #      history.history['loss'],
+                        #     history.history['val_loss'],
+                            #    history.history['accuracy'],
+                            #   history.history['val_accuracy']
+                            #])
+                            #np.save(f"history_pool\\history_nfilt_{nf1}.npy", data)
+                            #print(f"[SAVED] History for {nf1} filters with fixed number of kernels: {SAVE_HISTORY_KERNEL}")
 
-                    ######## SAVE HISTORY TO SEE THE INFLUENCE OF CHANGING KERNEL SIZE #########
-                    if nf1 == SAVE_HISTORY_FILTER:
-                        data = np.array([
-                            history.history['loss'],
-                            history.history['val_loss'],
-                            history.history['accuracy'],
-                            history.history['val_accuracy']
-                        ])
-                        np.save(f"history_pool\\history_kernel_size_{k1[0]}.npy", data)
-                        print(f"[SAVED] History for {k1} kernel size with fixed number of filters: {SAVE_HISTORY_FILTER}")
+                        ######## SAVE HISTORY TO SEE THE INFLUENCE OF CHANGING KERNEL SIZE #########
+                        #if nf1 == SAVE_HISTORY_FILTER and p1 == SAVE_HISTORY_POOL and p2 == SAVE_HISTORY_POOL:
+                        #   data = np.array([
+                        #      history.history['loss'],
+                        #     history.history['val_loss'],
+                            #    history.history['accuracy'],
+                            #   history.history['val_accuracy']
+                            #])
+                        # np.save(f"history_pool\\history_kernel_size_{k1[0]}.npy", data)
+                            #print(f"[SAVED] History for {k1} kernel size with fixed number of filters: {SAVE_HISTORY_FILTER}")
 
-                    f1 = f1_score(y_true_classes, y_pred_classes, average='macro')
-                    print(f"F1 score for Conv2D_1: filters={nf1}, kernel={k1}; Pool1: {p1}; Conv2D_2: filters={nf2}, kernel={k2}¨; Pool2: {p2}: {f1:.4f}")
+                        f1 = f1_score(y_true_classes, y_pred_classes, average='macro')
+                        print(f"F1 score for Conv2D_1: filters={nf1}, kernel={k1}; Pool1: {p1}; Conv2D_2: filters={nf2}, kernel={k2}; Pool2: {p2}: {f1:.4f}")
 
-                    ######## UPDATE BEST MODEL #########
-                    current_val_loss = history.history['val_loss'][-1]
-                    current_val_acc  = history.history['val_accuracy'][-1]
+                        ######## UPDATE BEST MODEL #########
+                        current_val_loss = history.history['val_loss'][-1]
+                        current_val_acc  = history.history['val_accuracy'][-1]
 
-                    if (
-                        f1 > best_f1 or
-                        (f1 == best_f1 and current_val_loss < best_val_loss) or
-                        (f1 == best_f1 and current_val_loss == best_val_loss and current_val_acc > best_val_acc)
-                    ):
-                        best_f1 = f1
-                        best_val_loss = current_val_loss
-                        best_val_acc = current_val_acc
-                        best_model = model
-                        best_pred = y_pred_classes
-                        best_true = y_true_classes
-                        best_history = history.history
-                        best_config = (nf1, k1, p1, nf2, k2, p2)
+                        with open(results_file, mode='a', newline='') as f:
+                            writer = csv.writer(f)
+                            writer.writerow([
+                                run_id, nf1, k1, p1, nf2, k2, p2,
+                                round(f1, 5), round(current_val_loss, 5), round(current_val_acc, 5)
+                            ])
 
+                        if (
+                            f1 > best_f1 or
+                            (f1 == best_f1 and current_val_loss < best_val_loss) or
+                            (f1 == best_f1 and current_val_loss == best_val_loss and current_val_acc > best_val_acc)
+                        ):
+                            best_f1 = f1
+                            best_val_loss = current_val_loss
+                            best_val_acc = current_val_acc
+                            best_model = model
+                            best_pred = y_pred_classes
+                            best_true = y_true_classes
+                            best_history = history.history
+                            best_config = (nf1, k1, p1, nf2, k2, p2)
+
+                    except Exception as e:
+                        print(f"[SKIPPED] Error in configuration: {nf1}, {k1}, {p1}, {nf2}, {k2}, {p2} → {e}")
+                        continue
 
 ######## FINAL SAVE & DISPLAY #########
 if best_model is not None:

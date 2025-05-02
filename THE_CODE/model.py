@@ -20,7 +20,7 @@ from tensorflow.keras.utils import plot_model
 
 ######### FIXED SETTINGS #########
 SAVE_MODEL = True
-plot_model_once = True
+#plot_model_once = True
 
 # For saving history only when these match:
 SAVE_HISTORY_FILTER = 32
@@ -40,20 +40,20 @@ best_f1      = 0
 best_model   = None
 best_preds   = None
 best_true    = None
-best_params  = None   #(nf1, k1, p1, nf2, k2, p2)
+best_params  = None   #(nf1, k1, p1, nf2, k2, p2, use_bn1, do1, use_bn2, do2, use_bn3)
 best_history = None
 best_val_loss = float('inf')
 best_val_acc = 0
-run_id = 1
-results_file = "results.csv"
-if not os.path.exists(results_file):
-    with open(results_file, mode='w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            'run', 'nf1', 'k1', 'p1', 'nf2', 'k2', 'p2',
-            'f1_score', 'val_loss', 'val_accuracy'
-        ])
+run_id = 0
+results_file = "results.csv" #for saving the results through EVERY computed run
 
+with open(results_file, mode='w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow([
+        'run', 'nf1', 'k1', 'p1', 'nf2', 'k2', 'p2',
+        'f1_score', 'val_loss', 'val_accuracy',
+        'bn1', 'dropout1', 'bn2', 'dropout2', 'bn3'
+    ])
 
 ######### HYPERPARAMETER GRID #########
 pool_size = [(2,2), (3,3), (4,4), (5,5)]
@@ -61,6 +61,7 @@ n_filt = [16, 24, 32, 48, 64]
 kernel_size = [(2,2), (5,5), (8,8)] 
 add_layer = [0, 1]
 
+######### DIMENSION CHECK FUNCTION #########
 def is_valid_output_shape(input_shape, kernel_size, pool_size):
     h, w = input_shape
     h = (h - kernel_size[0]) + 1
@@ -81,7 +82,13 @@ for p1 in pool_size:
             for k1 in kernel_size:
                 for k2 in kernel_size:
                     input_shape = (72, 48)
+                    use_bn1 = int(np.random.choice(add_layer))
+                    do1 = round(np.random.uniform(0.0, 0.5), 3)
+                    use_bn2 = int(np.random.choice(add_layer))
+                    do2 = round(np.random.uniform(0.0, 0.5), 3)
+                    use_bn3 = int(np.random.choice(add_layer))
 
+                    ######## CONTROL OF THE SHAPE VALIDIY #########
                     if not is_valid_output_shape(input_shape, k1, p1):
                         continue
                     intermediate_shape = (
@@ -96,12 +103,10 @@ for p1 in pool_size:
                     if not is_valid_output_shape(intermediate_shape, k2, p2):
                         continue
 
-                    print(f"\n[RUN {run_id}] Training: Conv2D_1: filters={nf1}, kernel={k1}; Pool1: {p1}; Conv2D_2: filters={nf2}, kernel={k2}; Pool2: {p2}")
-                    run_id += 1
+                    print(f"\n[RUN {run_id}] Training: Conv2D_1: f{nf1}, k1={k1}; Pool1={p1}; Conv2D_2: f{nf2}, k2={k2}; Pool2={p2}; bn1={use_bn1}, do1={do1}, bn2={use_bn2}, do2={do2}, bn3={use_bn3}")
                                         
                     ######## MODEL BUILDING #########
                     model = Sequential()
-                    #model.add(Input(x_train_normalized.shape))
                     model.add(Input(shape=(72, 48, 1)))
 
                     model.add(Conv2D(nf1, kernel_size=k1, activation='relu'))
@@ -112,32 +117,28 @@ for p1 in pool_size:
 
                     model.add(Flatten()) 
 
-                    if np.random.choice(add_layer):
+                    if use_bn1:
                         model.add(BatchNormalization())
 
                     model.add(Dense(48, activation='relu'))
 
-                    model.add(Dropout(round(np.random.uniform(0.0, 0.5), 3)))
+                    model.add(Dropout(do1))
                     
-                    if np.random.choice(add_layer):
+                    if use_bn2:
                         model.add(BatchNormalization())
 
                     model.add(Dense(25, activation='relu'))
 
-                    model.add(Dropout(round(np.random.uniform(0.0, 0.5), 3)))
+                    model.add(Dropout(do2))
 
-                    if np.random.choice(add_layer):
+                    if use_bn3:
                         model.add(BatchNormalization())
 
-                    model.add(Dense(3, activation='softmax')) # last layer
+                    model.add(Dense(3, activation='softmax')) # last layer for classication to bts1, bts2, bts3
 
                     optimizer = Adam(learning_rate = 0.001)
-
-                    #optimizer = opt[k]
                     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
-
                     #model.summary()
-
                     early_stopping = EarlyStopping(monitor='val_loss', patience=4, verbose=1, restore_best_weights=True)
 
                     ######## TRAINING #########
@@ -148,7 +149,7 @@ for p1 in pool_size:
                             batch_size=20,
                             validation_split=0.2,
                             callbacks=early_stopping
-                        ) # validation_data=(x_test_normalized, y_test_encoded),shuffle = True, epochs=30, batch_size=20
+                        )
 
                         y_pred = model.predict(x_test_normalized)
                         y_pred_classes = np.argmax(y_pred, axis=1)
@@ -177,7 +178,9 @@ for p1 in pool_size:
                             #print(f"[SAVED] History for {k1} kernel size with fixed number of filters: {SAVE_HISTORY_FILTER}")
 
                         f1 = f1_score(y_true_classes, y_pred_classes, average='macro')
-                        print(f"F1 score for Conv2D_1: filters={nf1}, kernel={k1}; Pool1: {p1}; Conv2D_2: filters={nf2}, kernel={k2}; Pool2: {p2}: {f1:.4f}")
+                        print(f"F1 score for [RUN {run_id}]: {f1:.5f}")
+
+                        run_id += 1
 
                         ######## UPDATE BEST MODEL #########
                         current_val_loss = history.history['val_loss'][-1]
@@ -187,7 +190,8 @@ for p1 in pool_size:
                             writer = csv.writer(f)
                             writer.writerow([
                                 run_id, nf1, k1, p1, nf2, k2, p2,
-                                round(f1, 5), round(current_val_loss, 5), round(current_val_acc, 5)
+                                round(f1, 5), round(current_val_loss, 5), round(current_val_acc, 5),
+                                use_bn1, do1, use_bn2, do2, use_bn3
                             ])
 
                         if (
@@ -202,16 +206,16 @@ for p1 in pool_size:
                             best_pred = y_pred_classes
                             best_true = y_true_classes
                             best_history = history.history
-                            best_config = (nf1, k1, p1, nf2, k2, p2)
+                            best_config = (nf1, k1, p1, nf2, k2, p2, use_bn1, do1, use_bn2, do2, use_bn3)
 
                     except Exception as e:
-                        print(f"[SKIPPED] Error in configuration: {nf1}, {k1}, {p1}, {nf2}, {k2}, {p2} → {e}")
+                        print(f"[SKIPPED] Error in configuration: {nf1}, {k1}, {p1}, {nf2}, {k2}, {p2}, {use_bn1}, {do1}, {use_bn2}, {do2}, {use_bn3} → {e}")
                         continue
 
 ######## FINAL SAVE & DISPLAY #########
 if best_model is not None:
-    nf1, k1, p1, nf2, k2, p2 = best_config
-    print(f"\nBest model: F1={best_f1:.4f} | CV1: {nf1}, {k1} | P1: {p1} | CV2: {nf2}, {k2} | P2: {p2} ")
+    nf1, k1, p1, nf2, k2, p2, use_bn1, do1, use_bn2, do2, use_bn3 = best_config
+    print(f"\nBest model: F1={best_f1:.4f} | CV1: {nf1}, {k1} | P1: {p1} | CV2: {nf2}, {k2} | P2: {p2} | BN1: {use_bn1} | D1: {do1} | BN2: {use_bn2} | D2: {do2} | BN3: {use_bn3} ")
     best_model.save("THE_CODE\\model.keras")
 
     plt.figure()

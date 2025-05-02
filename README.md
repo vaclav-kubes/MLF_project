@@ -1,4 +1,4 @@
-# Machine Learning Fundamemts Final project: 5G Base Station Classification
+# Machine Learning Fundamentals Final project: 5G Base Station Classification
 
 ## Project Overview
 This project focuses on the classification of 5G base stations to detect the presence of false base stations (FBS), also known as rogue base stations (RBS) or IMSI catchers. These malicious devices attempt to impersonate legitimate network towers, posing security risks by intercepting user data.

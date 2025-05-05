@@ -30,6 +30,9 @@ The dataset consists of channel frequency responses derived from PSS/SSS signals
 4. **Evaluation**: Measure model accuracy using test data and optimize performance.
 5. **Submission**: Submit predictions to Kaggle and document results.
 
+## The Documentation
+Documentation can be found in this project directory [here](/MLF_project_paper.pdf).
+
 ## Dependencies
 - Python (3.x)
 - NumPy
